@@ -97,7 +97,7 @@ RUN pip install --no-cache-dir "nvidia-nccl-cu13==2.30.7" && \
 COPY vllm-src/ /build/vllm-src/
 
 WORKDIR /build/vllm-src
-RUN pip install --no-cache-dir "cmake>=3.26.1" "setuptools-rust>=1.9.0" wheel && \
+RUN pip install --no-cache-dir "cmake>=3.26.1" "setuptools-rust>=1.9.0" "setuptools-scm>=8" wheel && \
     python3 use_existing_torch.py
 
 # Compile CUDA/CUTLASS/NVFP4 for sm_120 + sm_120a only.
