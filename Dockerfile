@@ -47,20 +47,28 @@ ENV TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /build
 
+# jammy has no python3.12 in archive — deadsnakes. Do not use jammy python3-pip
+# (that is 3.10 and would shadow /usr/bin/pip).
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        git ca-certificates curl ffmpeg \
-        python3.12 python3.12-dev python3.12-venv python3-pip \
+        git ca-certificates curl ffmpeg gnupg software-properties-common \
         gcc-12 g++-12 make ninja-build \
-        libsndfile1 libgomp1 \
-        && apt-get clean && rm -rf /var/lib/apt/lists/* && \
+        libsndfile1 libgomp1 && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3.12 python3.12-dev python3.12-venv && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
     ln -sf /usr/bin/python3.12 /usr/local/bin/python3 && \
     ln -sf /usr/bin/python3.12 /usr/local/bin/python && \
     ln -sf /usr/bin/gcc-12 /usr/bin/gcc && \
     ln -sf /usr/bin/g++-12 /usr/bin/g++ && \
     ln -sf /usr/bin/gcc-12 /usr/bin/cc && \
     ln -sf /usr/bin/g++-12 /usr/bin/c++ && \
-    python3 -m pip install --upgrade pip
+    python3.12 -m ensurepip --upgrade && \
+    python3 -m pip install --upgrade pip && \
+    ln -sf "$(command -v pip3 || true)" /usr/local/bin/pip 2>/dev/null || true && \
+    python3 -m pip --version && python3 --version
 
 ENV CC=gcc-12
 ENV CXX=g++-12
