@@ -26,8 +26,13 @@ if [[ "$arch" != "x86_64" && "$arch" != "amd64" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$ROOT/vllm-src" ]]; then
-  ln -s "$VLLM_SRC" "$ROOT/vllm-src"
+# Docker COPY will not follow a symlink out of the build context.
+if [[ -L "$ROOT/vllm-src" ]]; then
+  echo "materializing vllm-src (out-of-context symlink is invisible to docker build)"
+  rm -f "$ROOT/vllm-src"
+  rsync -a --delete "$VLLM_SRC"/ "$ROOT/vllm-src"/
+elif [[ ! -d "$ROOT/vllm-src" ]]; then
+  rsync -a "$VLLM_SRC"/ "$ROOT/vllm-src"/
 fi
 
 echo "Baking $IMAGE:$TAG"
