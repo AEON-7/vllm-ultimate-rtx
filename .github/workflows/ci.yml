@@ -1,0 +1,38 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  arch-pins:
+    name: RTX 5090 sm_120 arch pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check arch pins
+        run: bash scripts/check-arch-pins.sh
+      - name: refuse Spark flags on 5090 files
+        run: |
+          set -e
+          if grep -n 'ENV VLLM_USE_V2_MODEL_RUNNER' Dockerfile Dockerfile.slim; then
+            echo "V2 runner baked — not allowed on 5090 path"; exit 1
+          fi
+          if grep -nE 'ENV TORCH_CUDA_ARCH_LIST=.*12\.1' Dockerfile Dockerfile.slim; then
+            echo "12.1/12.1a as 5090 pin — bug"; exit 1
+          fi
+          grep -q 'sm_120' README.md
+          grep -q 'NOT for DGX Spark' README.md
+          grep -q 'TORCH_CUDA_ARCH_LIST' README.md
+          echo "CI OK"
+
+  dockerfile-syntax:
+    name: Dockerfile present + labels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: labels name the 5090 lane
+        run: |
+          grep -q 'ai.aeon.arch="sm_120"' Dockerfile
+          grep -q 'aeon-vllm-ultimate-rtx' Dockerfile
+          grep -q 'NOT for DGX Spark' Dockerfile

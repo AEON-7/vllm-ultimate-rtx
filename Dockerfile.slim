@@ -1,0 +1,52 @@
+# AEON vLLM Ultimate RTX — slim rebase (AFTER a fat sm_120 bake exists).
+#
+# Same idea as the Spark slim: lift the compiled userland onto
+# nvidia/cuda:13.0.2-base-ubuntu22.04 (linux/amd64 — NOT arm64).
+# Do not run this until ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120-fat exists.
+#
+# THIS IMAGE IS NOT FOR DGX SPARK / GB10 / sm_121a.
+
+ARG DONOR=ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120-fat
+FROM ${DONOR} AS donor
+FROM nvidia/cuda:13.0.2-base-ubuntu22.04 AS rt
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+        ca-certificates curl git gcc-12 g++-12 make ffmpeg \
+        libsqlite3-0 libreadline8 libffi8 libssl3 zlib1g \
+        libsndfile1 procps sudo libgomp1 \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+COPY --from=donor /usr/local/cuda-13.0/bin/ /usr/local/cuda-13.0/bin/
+COPY --from=donor /usr/local/cuda-13.0/nvvm/ /usr/local/cuda-13.0/nvvm/
+
+COPY --from=donor /usr/local/bin/ /usr/local/bin/
+COPY --from=donor /usr/local/include/ /usr/local/include/
+COPY --from=donor /usr/local/lib/ /usr/local/lib/
+COPY --from=donor /usr/local/share/ /usr/local/share/
+
+ENV PATH=/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ENV LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/cuda/lib64
+ENV CC=gcc-12 CXX=g++-12 CUDAHOSTCXX=g++-12 TRITON_PTXAS_PATH=/usr/local/cuda/bin/ptxas
+ENV VLLM_ENABLE_CUDA_COMPATIBILITY=0
+ENV TORCH_CUDA_ARCH_LIST="12.0;12.0a"
+ENV CMAKE_CUDA_ARCHITECTURES="120;120a"
+ENV CUDAARCHS="120;120a"
+ENV FLASHINFER_CUDA_ARCH_LIST="120;120a"
+ENV CUTLASS_NVCC_ARCHS="120;120a"
+ENV ENABLE_NVFP4_SM100=0
+
+RUN ln -sf /usr/bin/gcc-12 /usr/bin/gcc && ln -sf /usr/bin/g++-12 /usr/bin/g++ && \
+    ln -sf /usr/bin/gcc-12 /usr/bin/cc && ln -sf /usr/bin/g++-12 /usr/bin/c++ && \
+    ldconfig
+
+LABEL org.opencontainers.image.title="AEON vLLM Ultimate RTX slim (5090 / sm_120)" \
+      org.opencontainers.image.description="Slim rebase of the RTX 5090 / Blackwell sm_120 / NVFP4 image. NOT for DGX Spark / GB10 / sm_121a." \
+      org.opencontainers.image.source="https://github.com/AEON-7/vllm-ultimate-rtx" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="0.27.1+aeon.sm120.rtx" \
+      ai.aeon.arch="sm_120" \
+      ai.aeon.torch_cuda_arch_list="12.0;12.0a" \
+      ai.aeon.not_for="DGX Spark GB10 sm_121a"
+
+ENTRYPOINT ["/bin/bash"]
