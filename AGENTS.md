@@ -27,7 +27,7 @@ for the fleet" — that preference is retired. The split is real.
 
 ## Serve seats
 
-**Judge (default documented):** port `18080`, `--max-model-len 8192`,
+**Judge (default documented):** port `18081`, `--max-model-len 8192`,
 `--max-num-seqs 64`, `--kv-cache-dtype nvfp4`, `--attention-backend FLASHINFER`,
 thinking off at the request, **no MTP**.
 

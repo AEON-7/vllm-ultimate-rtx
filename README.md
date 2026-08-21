@@ -103,19 +103,19 @@ docker pull ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120
 
 ### Recipe J — tight-KV judge (default seat, no MTP)
 
-Port **18080** (MODELFORGE). Not 8000 if Hermes / a Brev tunnel already owns it. Short context, thinking off, high concurrency, NVFP4 weights + NVFP4-KV, FLASHINFER.
+Port **18081** (MODELFORGE). Not 8000 if Hermes / a Brev tunnel already owns it. Short context, thinking off, high concurrency, NVFP4 weights + NVFP4-KV, FLASHINFER.
 
 ```bash
 docker run -d --name aeon-vllm-rtx-judge \
     --gpus all --ipc=host --shm-size=16g \
-    -p 18080:18080 \
+    -p 18081:18081 \
     -e VLLM_USE_FLASHINFER_SAMPLER=1 \
     -e TORCH_CUDA_ARCH_LIST=12.0 \
     -v /models/judge:/model:ro \
     --entrypoint vllm \
     ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120 \
     serve /model \
-        --host 0.0.0.0 --port 18080 \
+        --host 0.0.0.0 --port 18081 \
         --served-model-name judge \
         --dtype auto \
         --quantization modelopt \
@@ -137,7 +137,7 @@ Compose: [`docker-compose.judge.yml`](docker-compose.judge.yml).
 Thinking stays **off** at the request (judge JSON, not a chain-of-thought essay):
 
 ```bash
-curl -s http://127.0.0.1:18080/v1/chat/completions \
+curl -s http://127.0.0.1:18081/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "judge",

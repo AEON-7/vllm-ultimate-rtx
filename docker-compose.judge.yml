@@ -2,7 +2,7 @@
 # Prefills are long-ish, decodes are tiny JSON. NO MTP on this seat.
 # MTP=2 is a later long-run chat/student knob, not this bake's default.
 #
-# Port 18080 — MODELFORGE on WSL. Do not steal :8000 if Hermes/Brev uses it.
+# Port 18081 — MODELFORGE on WSL. Do not steal :8000 if Hermes/Brev uses it.
 # THIS COMPOSE IS NOT FOR DGX SPARK / GB10.
 
 services:
@@ -12,7 +12,7 @@ services:
     ipc: host
     shm_size: 16g
     ports:
-      - "18080:18080"
+      - "18081:18081"
     gpus: all
     environment:
       # RTX 5090 · Blackwell sm_120 · NVFP4
@@ -29,7 +29,7 @@ services:
       - --host
       - 0.0.0.0
       - --port
-      - "18080"
+      - "18081"
       - --served-model-name
       - judge
       - --dtype
