@@ -1,0 +1,37 @@
+name: image
+# Multi-hour linux/amd64 CUDA compile. Manual only.
+# Do NOT bake on spark-ecdd (aarch64). Do NOT start Docker Desktop on Aorus.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "GHCR tag (default sm120)"
+        required: false
+        default: sm120
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  bake:
+    name: bake sm_120 linux/amd64
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+      - name: arch pins first
+        run: bash scripts/check-arch-pins.sh
+      - name: note missing vllm-src
+        run: |
+          echo "This workflow needs vllm-src (AEON v0.27.1 tree)."
+          echo "Pin: aeon-v0.27.1 @ 34aeb2303114bf3d8b2ecd582b7301868691735a"
+          echo "Default GHCR hosted runners are usually too small for a from-source vLLM CUDA compile."
+          echo "Preferred bake hosts: a linux/amd64 box with Docker already running, or a larger runner."
+          echo "Exact command: IMAGE=ghcr.io/aeon-7/aeon-vllm-ultimate-rtx TAG=sm120 VLLM_SRC=/path/to/aeon-v0.27.1/vllm-src ./scripts/bake-rtx5090.sh"
+          echo "TORCH_CUDA_ARCH_LIST=12.0;12.0a  CMAKE_CUDA_ARCHITECTURES=120;120a"
+          if [[ ! -d vllm-src ]]; then
+            echo "vllm-src not in this checkout — skipping compile (recipe-only run)."
+            exit 0
+          fi
+          echo "vllm-src present; compile would start here on a capable runner."

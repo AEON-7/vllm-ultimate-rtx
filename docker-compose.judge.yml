@@ -1,0 +1,59 @@
+# Tight-KV judge seat for RTX 5090 / sm_120.
+# Prefills are long-ish, decodes are tiny JSON. NO MTP on this seat.
+# MTP=2 is a later long-run chat/student knob, not this bake's default.
+#
+# Port 18081 — MODELFORGE on WSL. Do not steal :8000 if Hermes/Brev uses it.
+# THIS COMPOSE IS NOT FOR DGX SPARK / GB10.
+
+services:
+  aeon-vllm-rtx-judge:
+    image: ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120
+    container_name: aeon-vllm-rtx-judge
+    ipc: host
+    shm_size: 16g
+    ports:
+      - "18081:18081"
+    gpus: all
+    environment:
+      # RTX 5090 · Blackwell sm_120 · NVFP4
+      TORCH_CUDA_ARCH_LIST: "12.0;12.0a"
+      # Attention winner on dedicated-VRAM 5090: FLASHINFER (not GB10 TRITON_ATTN).
+      VLLM_USE_FLASHINFER_SAMPLER: "1"
+      # Do NOT set VLLM_USE_V2_MODEL_RUNNER. Do NOT set DSpark / GB10 flags.
+    volumes:
+      - ${MODEL_DIR:-/models/judge}:/model:ro
+    entrypoint: ["vllm"]
+    command:
+      - serve
+      - /model
+      - --host
+      - 0.0.0.0
+      - --port
+      - "18081"
+      - --served-model-name
+      - judge
+      - --dtype
+      - auto
+      - --quantization
+      - modelopt
+      - --kv-cache-dtype
+      - nvfp4
+      - --attention-backend
+      - FLASHINFER
+      - --linear-backend
+      - flashinfer_cutlass
+      - --max-model-len
+      - "8192"
+      - --max-num-seqs
+      - "64"
+      - --max-num-batched-tokens
+      - "8192"
+      - --gpu-memory-utilization
+      - "0.90"
+      - --enable-chunked-prefill
+      - --enable-prefix-caching
+      - --generation-config
+      - vllm
+      - --trust-remote-code
+      # thinking OFF: send chat_template_kwargs.enable_thinking=false on the request.
+      # NO --speculative-config. NO MTP.
