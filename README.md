@@ -72,7 +72,7 @@ Ada `8.9` is not a default. `native` is never the arch list.
 
 ## Serve flags — Qwen3.8 judge (no YaRN, no MTP)
 
-Hunt-judge seat: Qwen3.8, reasoning parser `qwen3`, tool-call parser `qwen3_coder`, auto tool choice. **No YaRN. No MTP.** Tight batching: `--max-num-seqs 4`, `--max-num-batched-tokens 16384`.
+Hunt-judge seat: Qwen3.8, reasoning parser `qwen3`, tool-call parser `qwen3_coder`, auto tool choice. **No YaRN. No MTP.** Tight batching: `--max-num-seqs 4`, `--max-num-batched-tokens 2048` — **2048, not 16384**; see [WSL2 long-prompt engine fault](#wsl2-long-prompt-engine-fault) below.
 
 ```bash
 docker run --gpus all --ipc=host --shm-size=16g \
@@ -87,10 +87,66 @@ docker run --gpus all --ipc=host --shm-size=16g \
     --enable-auto-tool-choice \
     --tool-call-parser qwen3_coder \
     --max-num-seqs 4 \
-    --max-num-batched-tokens 16384
+    --max-num-batched-tokens 2048
 ```
 
 Do not add YaRN rope scaling. Do not add MTP / speculative config for this judge seat.
+
+---
+
+## WSL2 long-prompt engine fault
+
+**Verified 2026-08-26 — Aorus RTX 5090, WSL2 Ubuntu-24.04, driver 610.47, headless GPU,
+Qwen3.8-27B NVFP4 (compressed-tensors).**
+
+With a large `--max-num-batched-tokens`, the **whole engine dies** partway through the first long
+prompt:
+
+```
+RuntimeError: CUDA driver error: device not ready
+vllm.v1.engine.exceptions.EngineDeadError
+```
+
+**The fix:** `--max-num-batched-tokens 2048`.
+
+### Why the traceback lies
+
+The fault site moves between runs — we saw `flashinfer_mm_fp4`, then, after changing the linear
+backend, an inductor MLP buffer (`empty_strided_cuda((s18, 17408))`). That is an **asynchronous
+CUDA fault surfacing at the next synchronising call**, so the frame in the traceback is merely
+whoever allocated next. Do not chase it.
+
+### It is latent — short prompts hide it
+
+A smoke test and a full 24-prompt category benchmark all passed before the first real ~24k-token
+conversation killed the engine. **Test with a long prompt or you will ship this.**
+
+### What we measured
+
+| `--linear-backend` | `--max-num-batched-tokens` | largest prompt | result |
+|---|---|---|---|
+| `auto` (default) | 8192 | 24,452 | EngineDeadError at `mm_fp4` |
+| `cutlass` | 8192 | 37,984 | EngineDeadError at MLP buffer |
+| `cutlass` | **2048** | **106,927** | OK |
+| `auto` (default) | **2048** | 34,927 | OK |
+
+Chunk size is the only variable that mattered. **`--linear-backend cutlass` is not the fix** and is
+not required — that was a wrong hypothesis, disproven by the last row.
+
+Smaller chunks also **buy KV**: the profiler reported 137,240 tokens at 8192 vs **142,637** at 2048,
+because the activation workspace shrinks. Prompts above `--max-model-len` are still rejected
+cleanly with HTTP 400 and the engine stays up — that is correct behaviour, not this bug.
+
+### Suspected mechanism
+
+Windows WDDM keeps its TDR watchdog over WSL2 GPU work (`TdrLevel=3`, `TdrDelay=2s` — both unset,
+i.e. default, on this host). One 8192-token prefill chunk through a 27B model appears to exceed
+that budget, so the device is reset underneath the process. Raising `TdrDelay` is the host-side
+alternative, but it is a machine-wide registry change needing a reboot; capping the chunk is
+per-service and reversible.
+
+**Native Linux hosts are not expected to need this** — the watchdog is a Windows/WDDM construct.
+Unverified: we only have the WSL2 box.
 
 ---
 
