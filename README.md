@@ -172,3 +172,37 @@ Apache-2.0 for this repo and the OCI license label. [vLLM](https://github.com/vl
 This container is provided **AS IS**. You are solely responsible for prompts, outputs, and what you do with them.
 
 AEON FORGE / @SpaceTimeViking.
+
+---
+
+## sm_120 notes: attention backend, thinking budget
+
+### Attention backend is auto-selected unless you pin it
+
+The `rtx5090-sm120` branch README recommends `--attention-backend FLASHINFER` (with `--kv-cache-dtype nvfp4`) for the short-context judge seat, while the sm_120 recipe shipped with the Qwen3.8 Ultimate delivery (`AGENTS.md` / `03-rtx5090.md`) makes `TRITON_ATTN` + `fp8_e4m3` a hard rule for long context. Whichever seat you run, **pin the backend explicitly**, because if `--attention-backend` is omitted, vLLM 0.27.1 on sm_120 picks **FLASHINFER** (log: `Using FLASHINFER attention backend out of potential backends: ['FLASHINFER', 'TRITON_ATTN']`). Combined with an fp8 KV cache this is the combination that can emit garbage / wrong tokens on sm_120. Pin it explicitly, every time:
+
+```
+--attention-backend TRITON_ATTN --kv-cache-dtype fp8_e4m3
+```
+
+Observed on an RTX PRO 6000 Blackwell (96 GB) with the Qwen3.8 NVFP4/GDN-FP8 tree: without the pin, long-context answers degraded; with the pin, a repetition probe up to 100k prompt + 65k reasoning tokens stayed clean.
+
+Note: with `--speculative-config '{"method":"mtp",...}'` the MTP drafter currently still auto-selects FLASHINFER (see https://github.com/AEON-7/vllm-ultimate-rtx/issues/2). Drafted tokens are verified by the TRITON_ATTN target, so output is unaffected.
+
+### Qwen thinks until `max_tokens` unless you give it a budget
+
+Qwen3.8 in thinking mode will happily spend the entire `max_tokens` inside `<think>` on count-heavy or long-context tasks and return no answer (`finish_reason: length`, empty `content`). Raising `max_tokens` does not fix this. Use the per-request **`thinking_token_budget`** that this vLLM build supports (no serve flag needed beyond `--reasoning-parser qwen3`):
+
+```bash
+curl -s http://127.0.0.1:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{
+  "model": "aeon",
+  "messages": [{"role": "user", "content": "..."}],
+  "max_tokens": 65536,
+  "thinking_token_budget": 16384,
+  "reasoning_effort": "medium"
+}'
+```
+
+vLLM forces `</think>` once the budget is spent and the model then answers. `reasoning_effort` only accepts `low` / `medium` / `xhigh` with the Qwen3.8 chat template (it injects a style hint; it does not bound length — the budget does). Measured on the PRO 6000: budget 1024 → 1023 reasoning tokens then answer; 4096 → 4095; 16384 on a 100k prompt → 27k-token completion with a full answer. Known upstream caveats for `thinking_token_budget` on Qwen3.5+: vllm-project/vllm#39697, vllm-project/vllm#44676.
+
+On a PRO 6000 with 262144 context, `--gpu-memory-utilization 0.65` leaves room for 4 concurrent full-length sequences (≈ 35 KiB KV per token at fp8) plus other residents.
