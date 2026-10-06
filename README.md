@@ -8,7 +8,7 @@
 
 Slim, linux/amd64 vLLM image for **NVIDIA Blackwell consumer / workstation `sm_120`**: GeForce **RTX 5090** and **RTX PRO 6000 Blackwell**. Compiled for CUDA 13 (`12.0` + `12.0a`) so NVFP4 / FP8 kernels actually land. Vision + audio extras are in this public-tag slim.
 
-GHCR package **`ghcr.io/aeon-7/aeon-vllm-ultimate-rtx`** is **private** (same visibility as `mf-*-rtx`). The GitHub repo is public so this card can live here. Pull requires a GHCR login as someone who can read the package.
+GHCR package **`ghcr.io/aeon-7/aeon-vllm-ultimate-rtx`** is **public**: anyone can pull it, no login needed.
 
 **This tag is not Spark. This tag is not B200 / B300.**
 
@@ -29,8 +29,7 @@ OCI title: `AEON vLLM Ultimate RTX slim (5090 / sm_120)`. Image version label: `
 ## Pull
 
 ```bash
-# WSL Ubuntu-24.04 + docker.io (not Docker Desktop)
-echo "$GHCR_TOKEN" | docker login ghcr.io -u AEON-7 --password-stdin
+# WSL Ubuntu-24.04 + docker.io (not Docker Desktop); no GHCR login needed (public package)
 docker pull ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120
 # same digest:
 #   :aeon-vllm-rtx-sm120
