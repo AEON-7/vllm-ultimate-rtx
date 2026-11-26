@@ -6,7 +6,7 @@
 
 [![Buy me a coffee on LotusMake](https://lotusmake.com/badges/coffee-light.v2.svg)](https://lotusmake.com/support) [![Subscribe on lotusmake.com](https://lotusmake.com/badges/subscribe-light.v2.svg)](https://lotusmake.com/support?mode=tiers)
 
-**Public register:** AEON FORGE / [@SpaceTimeViking](https://github.com/SpaceTimeViking)
+**Public register:** AEON FORGE / [@SpaceTimeViking](https://github.com/AEON-7)
 
 Slim, linux/amd64 vLLM image for **NVIDIA Blackwell consumer / workstation `sm_120`**: GeForce **RTX 5090** and **RTX PRO 6000 Blackwell**. Compiled for CUDA 13 (`12.0` + `12.0a`) so NVFP4 / FP8 kernels actually land. Vision + audio extras are in this public-tag slim.
 
@@ -16,7 +16,7 @@ GHCR package **`ghcr.io/aeon-7/aeon-vllm-ultimate-rtx`** is **public**: anyone c
 
 | | This slim `:sm120` | Spark Ultimate (sibling) | Later / fat (not this tag) |
 |---|---|---|---|
-| **Repo** | [AEON-7/vllm-ultimate-rtx](https://github.com/AEON-7/vllm-ultimate-rtx) | [AEON-7/vllm-ultimate](https://github.com/AEON-7/vllm-ultimate) / [vllm-ultimate-dgx-spark](https://github.com/AEON-7/vllm-ultimate-dgx-spark) | same RTX repo |
+| **Repo** | [AEON-7/vllm-ultimate-rtx](https://github.com/AEON-7/vllm-ultimate-rtx) | [AEON-7/vllm-ultimate-dgx-spark](https://github.com/AEON-7/vllm-ultimate-dgx-spark) / [vllm-ultimate-dgx-spark](https://github.com/AEON-7/vllm-ultimate-dgx-spark) | same RTX repo |
 | **Image** | `ghcr.io/aeon-7/aeon-vllm-ultimate-rtx:sm120` | `ghcr.io/aeon-7/aeon-vllm-ultimate` (aarch64) — **do not overwrite** | `:sm120-fat`, planned `:sm100` / `:sm103` |
 | **ISA** | linux/amd64 | linux/aarch64 | linux/amd64 |
 | **CUDA arch** | **sm_120** · `TORCH_CUDA_ARCH_LIST=12.0;12.0a` | sm_121a / GB10 / UMA | sm_100 / sm_103 cubins (stripped from this slim) |
